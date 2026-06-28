@@ -1,0 +1,9 @@
+Read train.txt, val.txt or test.txt.
+Parse each line (product_id/sample_num).
+Build absolute paths.
+Load .npy arrays.
+Normalize 
+Data augementation (which ones are useful?)
+Convert to torch.float32.
+Add channel dimension.
+Return (input, target).

@@ -1,0 +1,220 @@
+==========================================================
+BAH 2026
+Super Resolution Dataset Contract
+Version: 1.0
+==========================================================
+
+Purpose
+-------
+Defines the responsibilities, inputs, outputs, and behavior of the
+Super Resolution Dataset used throughout the training pipeline.
+
+This contract should not be violated by future modules.
+
+
+==========================================================
+1. INPUT
+==========================================================
+
+The dataset receives:
+
+- Dataset root directory
+- Split file (train.txt / val.txt / test.txt)
+- Normalization configuration
+- Augmentation configuration (training only)
+
+
+==========================================================
+2. SPLIT FILE FORMAT
+==========================================================
+
+Each line contains
+
+product_id/sample_id
+
+Example
+
+LC09_147039_20221129/sample_001
+
+The dataset parses each line and stores all samples internally.
+
+No random splitting is performed inside the dataset.
+
+
+==========================================================
+3. PATH CONSTRUCTION
+==========================================================
+
+For every sample, construct
+
+root/
+    product_id/
+        sample_id/
+            tir_200m.npy
+            tir_100m_512.npy
+
+No paths are hardcoded outside the dataset.
+
+
+==========================================================
+4. DATA LOADING
+==========================================================
+
+Load
+
+Input:
+    tir_200m.npy
+
+Target:
+    tir_100m_512.npy
+
+using numpy.load().
+
+
+==========================================================
+5. DATA VALIDATION
+==========================================================
+
+Before returning a sample verify:
+
+- Input exists
+- Target exists
+
+- Input shape == (256,256)
+- Target shape == (512,512)
+
+- No NaN values
+- No Inf values
+
+Raise an exception immediately if validation fails.
+
+
+==========================================================
+6. NORMALIZATION
+==========================================================
+
+Normalization Strategy
+----------------------
+
+Method:
+    Z-score/Standardisation
+
+Input:
+    mean_lr
+    std_lr
+
+Target:
+    mean_hr
+    std_hr
+
+Normalization parameters are read from sr_config.yaml.
+
+No normalization constants are hardcoded inside dataset.py.
+
+
+==========================================================
+7. DATA AUGMENTATION
+==========================================================
+
+Applied ONLY during training.
+
+Augmentations must preserve pixel correspondence between
+input and target.
+
+Allowed
+
+✓ Random Horizontal Flip
+
+✓ Random Vertical Flip
+
+✓ Random Rotation
+  (90°,180°,270°)
+
+✓ Random Transpose
+
+Not Allowed
+✗ Random Crop
+✗ Random Resize
+✗ Brightness
+✗ Contrast
+✗ Color Jitter
+✗ Gaussian Blur
+✗ Elastic Transform
+✗ Perspective Transform
+
+Input and target must always receive identical geometric transforms.
+
+
+==========================================================
+8. TENSOR CONVERSION
+==========================================================
+
+- Convert numpy arrays to torch.float32
+- Add channel dimension
+
+Input
+(256,256)
+↓
+(1,256,256)
+
+
+Target
+(512,512)
+↓
+(1,512,512)
+
+
+==========================================================
+9. OUTPUT FORMAT
+==========================================================
+
+Each sample returns
+
+{
+    "lr": Tensor,
+    "hr": Tensor,
+    "product_id": str,
+    "sample_id": str
+}
+
+where
+lr(low res) : (1,256,256)
+hr(high res) : (1,512,512)
+
+
+==========================================================
+10. RESPONSIBILITIES
+==========================================================
+
+The dataset IS responsible for
+
+✓ Reading split files
+✓ Building paths
+✓ Loading arrays
+✓ Validation
+✓ Normalization
+✓ Data augmentation
+✓ Tensor conversion
+✓ Returning samples
+
+
+The dataset is NOT responsible for
+
+✗ Loss computation
+
+✗ Metrics
+
+✗ Logging
+
+✗ Visualization
+
+✗ Optimizer
+
+✗ Scheduler
+
+✗ Training logic
+
+
+==========================================================
+END OF CONTRACT
+==========================================================

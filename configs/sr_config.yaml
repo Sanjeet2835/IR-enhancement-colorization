@@ -1,0 +1,10 @@
+normalization:
+  method: zscore
+
+  input:
+    mean: 46343.234939
+    std: 3082.030225
+
+  target:
+    mean: 46357.080239
+    std: 3025.034969
