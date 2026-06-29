@@ -1,0 +1,27 @@
+project/
+│
+├── configs/
+│   └── sr_config.yaml
+│
+├── data/
+│   ├── dataset.py
+│   └── datamodule.py
+│
+├── models/
+│   ├── blocks.py
+│   └── edsr.py
+│
+├── lightning/
+│   └── sr_module.py
+│
+├── utils/
+│   ├── metrics.py
+│   ├── losses.py
+│   ├── callbacks.py
+│   └── seed.py
+│
+├── train_sr.py
+│
+├── inference.py
+│
+└── requirements.txt

@@ -1,0 +1,6 @@
+# NOTE:
+# SSIMLoss has been temporarily disabled.
+# PIQ expects inputs within a valid intensity range, while the model's initial predictions fall outside that range after denormalization.
+# This caused runtime failures during training.
+# EDSR was originally trained with L1 loss, so we use L1 as the training objective for this hackathon implementation.
+# Also, calculating loss using unnormalized value may cause gradients to explode.

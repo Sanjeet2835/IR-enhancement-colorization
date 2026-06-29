@@ -1,0 +1,121 @@
+                    Light EDSR (×2 Super-Resolution)
+
+Input
+────────────────────────────────────────────────────────────────────────────
+Thermal Image (LR)
+Shape : (1, 256, 256)
+
+        │
+        ▼
+
+1. Head Convolution
+────────────────────────────────────────────────────────────────────────────
+3×3 Conv (1 → 64)
+
+Purpose
+• Extract shallow/local features
+• Learn edges, gradients and simple thermal structures
+
+Output Shape
+(64, 256, 256)
+
+        │
+        ▼
+
+2. Deep Feature Extraction
+────────────────────────────────────────────────────────────────────────────
+Residual Block × 8
+
+Each Residual Block
+
+Input
+   │
+3×3 Conv
+   │
+ReLU
+   │
+3×3 Conv
+   │
+Residual Scaling (×0.1)
+   │
+Skip Connection
+   ▼
+
+Purpose
+• Learn high-frequency details
+• Learn missing textures
+• Preserve stable gradient flow
+
+Output Shape
+(64, 256, 256)
+
+        │
+        ▼
+
+3. Body Convolution
+────────────────────────────────────────────────────────────────────────────
+3×3 Conv (64 → 64)
+
+Purpose
+• Fuse information learned by all residual blocks
+• Refine deep feature representation before global skip
+
+Output Shape
+(64, 256, 256)
+
+        │
+        ▼
+
+4. Global Skip Connection
+────────────────────────────────────────────────────────────────────────────
+Deep Features
+      +
+Shallow Features (from Head Conv)
+
+Purpose
+• Preserve low-frequency information
+• Allow residual body to focus only on recovering missing details
+
+Output Shape
+(64, 256, 256)
+
+        │
+        ▼
+
+5. Learned Upsampling
+────────────────────────────────────────────────────────────────────────────
+3×3 Conv
+64 → 256 Channels
+
+↓
+
+PixelShuffle ×2
+
+Purpose
+• Learn how pixels should be rearranged
+• Increase spatial resolution from 256×256 to 512×512
+
+Output Shape
+(64, 512, 512)
+
+        │
+        ▼
+
+6. Reconstruction Layer
+────────────────────────────────────────────────────────────────────────────
+3×3 Conv (64 → 1)
+
+Purpose
+• Combine 64 high-resolution feature maps
+• Reconstruct the final thermal image
+
+Output Shape
+(1, 512, 512)
+
+        │
+        ▼
+
+Prediction
+────────────────────────────────────────────────────────────────────────────
+Super-Resolved Thermal Image
+Shape : (1, 512, 512)
