@@ -5,7 +5,7 @@
 
 ## Overview
 
-This project aims to develop an end-to-end deep learning framework for enhancing the spatial resolution of thermal infrared (TIR) satellite imagery and generating realistic RGB visualizations while preserving geospatial information.
+This project develops an end-to-end deep learning framework for infrared (IR) satellite image enhancement and colorization. The framework improves the visual quality of low-contrast monochrome IR imagery by enhancing structural details and translating it into realistic RGB images while preserving scene semantics. The objective is to make IR imagery easier for both human analysts and computer vision systems to interpret, enabling more reliable identification of objects such as buildings, roads, vehicles, and vegetation under challenging imaging conditions.
 
 The proposed framework consists of two stages:
 
