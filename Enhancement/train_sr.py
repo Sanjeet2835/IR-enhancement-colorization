@@ -77,8 +77,8 @@ def main():
     logger = MLFlowLogger(
         experiment_name=config["experiment_name"],
         run_name=config["run_name"],
-        tracking_uri="http://127.0.0.1:5000",
-        log_model=True,
+        tracking_uri="file:./experiments-enhancement/mlruns",
+        log_model=False,
     )
 
 
