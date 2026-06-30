@@ -34,4 +34,4 @@ inference_rules.txt
 Colorization/project_layout.txt
 Colorization/utils/losses_note.txt
 verify_outputs.ipynb
-output/
+outputs/
