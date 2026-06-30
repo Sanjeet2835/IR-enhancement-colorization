@@ -10,8 +10,8 @@ from torchmetrics.image import (
     StructuralSimilarityIndexMeasure,
 )
 
-from model.unet import UNet
-from utils.losses import ColorizationLoss
+from Colorization.model.unet import UNet
+from Colorization.utils.losses import ColorizationLoss
 
 class ColorizationLightningModule(L.LightningModule):
     """
