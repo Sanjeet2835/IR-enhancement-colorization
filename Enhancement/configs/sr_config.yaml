@@ -41,7 +41,7 @@ scale_factor: 2
 # Training
 # ==========================================================
 
-max_epochs: 100
+max_epochs: 5
 
 learning_rate: 1e-4
 
