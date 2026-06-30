@@ -10,6 +10,7 @@ def get_callbacks(config: dict):
     checkpoint_callback = ModelCheckpoint(
         monitor=config["monitor"],
         mode=config["mode"],
+        dirpath="./experiments-enhancement/checkpoints",
 
         save_top_k=config["save_top_k"],
         save_last=True,
