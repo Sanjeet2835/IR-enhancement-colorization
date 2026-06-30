@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+
+# MLflow
+mlruns/
+experiments*/
+**/mlruns/
+**/artifacts/
+
+# Checkpoints
+*.ckpt
+*.pth
+
+# Experiment folders
+experiments-enhancement/
+experiments-colorization/
+
+# Python cache
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+
+export_model.py
+export_model_use_rule.txt
+veirfy_outputs.ipynb
+inference_rules.txt
+Colorization/project_layout.txt
+Colorization/utils/losses_note.txt
+verify_outputs.ipynb
+output/
