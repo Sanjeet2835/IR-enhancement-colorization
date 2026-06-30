@@ -5,8 +5,8 @@ import yaml
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from model.edsr import EDSR
-from utils.losses import CombinedLoss
+from Enhancement.model.edsr import EDSR
+from Enhancement.utils.losses import CombinedLoss
 from torchmetrics.image import (
     PeakSignalNoiseRatio,
     StructuralSimilarityIndexMeasure,
@@ -49,7 +49,6 @@ class SRLightningModule(L.LightningModule):
             scale_factor=scale_factor,
         )
 
-
         # ---------------------------------------------------------
         # Load Dataset Statistics
         # ---------------------------------------------------------
@@ -63,8 +62,7 @@ class SRLightningModule(L.LightningModule):
         self.hr_mean = stats["tir_100m"]["mean"][0]
         self.hr_std = stats["tir_100m"]["std"][0]
         self.data_range = stats["tir_100m"]["data_range"][0]
-        
-        
+
         # ---------------------------------------------------------
         # Loss
         # ---------------------------------------------------------
@@ -80,14 +78,13 @@ class SRLightningModule(L.LightningModule):
         # ---------------------------------------------------------
 
         self.psnr = PeakSignalNoiseRatio(
-            data_range=self.data_range
+            data_range=self.data_range,
         )
 
-        self.ssim_norm = StructuralSimilarityIndexMeasure(
-            data_range=8.0
+        self.ssim = StructuralSimilarityIndexMeasure(
+            data_range=1.0,
         )
-        
-        # ---------------------------------------------------------
+    # ---------------------------------------------------------
     # Forward Pass
     # ---------------------------------------------------------
 
@@ -140,32 +137,44 @@ class SRLightningModule(L.LightningModule):
     # Validation Step
     # ---------------------------------------------------------
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(
+        self,
+        batch,
+        batch_idx,
+    ):
 
         lr = batch["lr"]
         hr = batch["hr"]
 
         pred = self(lr)
 
-        pred_denorm = self.denormalize(pred)
-        hr_denorm = self.denormalize(hr)
-        
         loss = self.loss_fn(
             pred,
             hr,
         )
-        
 
-        psnr = self.psnr(pred_denorm, hr_denorm)
-        
-        pred_metric = pred.float().clamp(-4, 4)
-        hr_metric = hr.float().clamp(-4, 4)
+        pred_denorm = self.denormalize(pred).clamp(
+            0,
+            self.data_range,
+        ).float()
 
-        ssim = self.ssim_norm(
+        hr_denorm = self.denormalize(hr).clamp(
+            0,
+            self.data_range,
+        ).float()
+
+        psnr = self.psnr(
+            pred_denorm,
+            hr_denorm,
+        )
+
+        pred_metric = pred_denorm / self.data_range
+        hr_metric = hr_denorm / self.data_range
+
+        ssim = self.ssim(
             pred_metric,
             hr_metric,
         )
-
 
         self.log_dict(
             {
@@ -180,7 +189,8 @@ class SRLightningModule(L.LightningModule):
         )
 
         return loss
-    
+
+
     # ---------------------------------------------------------
     # Test Step
     # ---------------------------------------------------------
@@ -196,22 +206,32 @@ class SRLightningModule(L.LightningModule):
 
         pred = self(lr)
 
-        pred_denorm = self.denormalize(pred)
-        hr_denorm = self.denormalize(hr)
-
         loss = self.loss_fn(
             pred,
             hr,
         )
 
+        pred_denorm = self.denormalize(pred).clamp(
+            0,
+            self.data_range,
+        ).float()
+
+        hr_denorm = self.denormalize(hr).clamp(
+            0,
+            self.data_range,
+        ).float()
+
         psnr = self.psnr(
             pred_denorm,
             hr_denorm,
         )
+        
+        pred_metric = pred_denorm / self.data_range
+        hr_metric = hr_denorm / self.data_range
 
-        ssim = self.ssim_norm(
-            pred.float(),
-            hr.float(),
+        ssim = self.ssim(
+            pred_metric,
+            hr_metric,
         )
 
         self.log_dict(
@@ -228,7 +248,7 @@ class SRLightningModule(L.LightningModule):
 
         return loss
     
-        # ---------------------------------------------------------
+    # ---------------------------------------------------------
     # Optimizer & Scheduler
     # ---------------------------------------------------------
 
