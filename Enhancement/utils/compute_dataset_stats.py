@@ -21,6 +21,7 @@ TRAIN_SPLIT = DATASET_ROOT / "splits" / "train.txt"
 OUTPUT_FILE = (
     WORKSPACE
     / "IR-enhancement-colorization"
+    / "Enhancement"
     / "configs"
     / "dataset_stats.yaml"
 )
