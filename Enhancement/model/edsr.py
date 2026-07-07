@@ -30,7 +30,7 @@ class EDSR(nn.Module):
         in_channels: int = 1,
         out_channels: int = 1,
         num_features: int = 64,
-        num_blocks: int = 8,
+        num_blocks: int = 16,
         scale_factor: int = 2,
     ) -> None:
 
