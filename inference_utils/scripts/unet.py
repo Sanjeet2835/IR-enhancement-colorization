@@ -109,7 +109,7 @@ class AttentionGate(nn.Module):
         e: encoder feature
         d: decoder feature
     Output:
-        x: Concatened feature 
+        x: concatenated feature 
     '''
     
     def __init__(self,

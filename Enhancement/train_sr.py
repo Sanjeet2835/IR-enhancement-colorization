@@ -64,8 +64,7 @@ def main():
         num_blocks=int(config["num_blocks"]),
         scale_factor=int(config["scale_factor"]),
 
-        alpha=float(config["alpha"]),
-        beta=float(config["beta"]),
+        lambda_physics=float(config["lambda_physics"]),
 
         eta_min=float(config["eta_min"]),
     )
