@@ -17,8 +17,8 @@ class ColorizationLoss(nn.Module):
     -----
     All losses are computed in the normalized space.
 
-    The dataset is z-score normalized before being passed to the
-    network. Physical reflectance bounds [0, 1] are converted once
+    The dataset is z-score normalized before being passed to the network. 
+    Physical reflectance bounds [0, 1] are converted once
     into normalized bounds using the dataset statistics.
     """
 
