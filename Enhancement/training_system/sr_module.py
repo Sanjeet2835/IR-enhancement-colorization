@@ -6,7 +6,7 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from Enhancement.model.edsr import EDSR
-from Enhancement.utils.losses import CombinedLoss
+from Enhancement.utils.losses import EnhancementLoss
 from torchmetrics.image import (
     PeakSignalNoiseRatio,
     StructuralSimilarityIndexMeasure,
@@ -23,12 +23,11 @@ class SRLightningModule(L.LightningModule):
         learning_rate: float,
         weight_decay: float,
         max_epochs: int,
+        lambda_physics: float,
         num_features: int = 64,
         num_blocks: int = 8,
         scale_factor: int = 2,
-        alpha: float = 0.8,
-        beta: float = 0.2,
-        eta_min: float = 1e-6
+        eta_min: float = 1e-6,
     ) -> None:
 
         super().__init__()
@@ -62,15 +61,15 @@ class SRLightningModule(L.LightningModule):
         self.hr_mean = stats["tir_100m"]["mean"][0]
         self.hr_std = stats["tir_100m"]["std"][0]
         self.data_range = stats["tir_100m"]["data_range"][0]
-
+        self.min_temperature = stats["tir_100m"]["min"][0]
+        self.max_temperature = stats["tir_100m"]["max"][0]
+        
         # ---------------------------------------------------------
         # Loss
         # ---------------------------------------------------------
 
-        self.loss_fn = CombinedLoss(
-            data_range=self.data_range,
-            alpha=alpha,
-            beta=beta,
+        self.loss_fn = EnhancementLoss(
+            lambda_physics=lambda_physics,
         )
 
         # ---------------------------------------------------------
@@ -88,11 +87,15 @@ class SRLightningModule(L.LightningModule):
     # Forward Pass
     # ---------------------------------------------------------
 
-    def forward(self, x):
+    def forward(
+        self,
+        tir_200m: torch.Tensor,
+    ) -> torch.Tensor:
         """
-        Forward pass through the EDSR model.
+        Enhance a normalized 200 m thermal image
+        to 100 m resolution.
         """
-        return self.model(x)
+        return self.model(tir_200m)
 
     # ---------------------------------------------------------
     # Denormalization
@@ -100,35 +103,40 @@ class SRLightningModule(L.LightningModule):
 
     def denormalize(self, x):
         """
-        Convert normalized tensors back to the original
-        thermal radiance/temperature scale.
+        Convert normalized tensors back to
+        temperature in Kelvin.
         """
+
         return x * self.hr_std + self.hr_mean
     
         # ---------------------------------------------------------
     # Training Step
     # ---------------------------------------------------------
 
-    def training_step(self, batch, batch_idx):
+    def training_step(
+        self,
+        batch,
+        batch_idx,
+    ):
 
-        lr = batch["lr"]
-        hr = batch["hr"]
+        tir_200m = batch["lr"]
+        tir_100m = batch["hr"]
 
-        pred = self(lr)
+        prediction = self(tir_200m)
 
         loss = self.loss_fn(
-            pred,
-            hr,
+            prediction=prediction,
+            target=tir_100m,
+            input_200m=tir_200m,
         )
-        
-        
+
         self.log(
             "train_loss",
             loss,
             prog_bar=True,
             on_step=False,
             on_epoch=True,
-            batch_size=lr.size(0),
+            batch_size=tir_200m.size(0),
         )
 
         return loss
@@ -143,37 +151,43 @@ class SRLightningModule(L.LightningModule):
         batch_idx,
     ):
 
-        lr = batch["lr"]
-        hr = batch["hr"]
+        tir_200m = batch["lr"]
+        tir_100m = batch["hr"]
 
-        pred = self(lr)
+        prediction = self(tir_200m)
 
         loss = self.loss_fn(
-            pred,
-            hr,
+            prediction=prediction,
+            target=tir_100m,
+            input_200m=tir_200m,
         )
 
-        pred_denorm = self.denormalize(pred).clamp(
-            0,
-            self.data_range,
-        ).float()
+        prediction_denorm = self.denormalize(
+            prediction
+        ).clamp(self.min_temperature, self.max_temperature).float()
 
-        hr_denorm = self.denormalize(hr).clamp(
-            0,
-            self.data_range,
-        ).float()
+        target_denorm = self.denormalize(
+            tir_100m
+        ).clamp(self.min_temperature, self.max_temperature).float()
 
         psnr = self.psnr(
-            pred_denorm,
-            hr_denorm,
+            prediction_denorm,
+            target_denorm,
         )
+        
+        #Min-Max normalization so [Min, Max] -> [0,1] since SSIM is configured with data_range=1.0.
+        prediction_metric = (
+            prediction_denorm - self.min_temperature
+        ) / self.data_range
 
-        pred_metric = pred_denorm / self.data_range
-        hr_metric = hr_denorm / self.data_range
+        target_metric = (
+            target_denorm - self.min_temperature
+        ) / self.data_range
+
 
         ssim = self.ssim(
-            pred_metric,
-            hr_metric,
+            prediction_metric,
+            target_metric,
         )
 
         self.log_dict(
@@ -185,7 +199,7 @@ class SRLightningModule(L.LightningModule):
             prog_bar=True,
             on_step=False,
             on_epoch=True,
-            batch_size=lr.size(0),
+            batch_size=tir_200m.size(0),
         )
 
         return loss
@@ -201,37 +215,43 @@ class SRLightningModule(L.LightningModule):
         batch_idx: int,
     ) -> torch.Tensor:
 
-        lr = batch["lr"]
-        hr = batch["hr"]
+        tir_200m = batch["lr"]
+        tir_100m = batch["hr"]
 
-        pred = self(lr)
+        prediction = self(tir_200m)
 
         loss = self.loss_fn(
-            pred,
-            hr,
+            prediction=prediction,
+            target=tir_100m,
+            input_200m=tir_200m,
         )
 
-        pred_denorm = self.denormalize(pred).clamp(
-            0,
-            self.data_range,
-        ).float()
+        prediction_denorm = self.denormalize(
+            prediction
+        ).clamp(self.min_temperature, self.max_temperature).float()
 
-        hr_denorm = self.denormalize(hr).clamp(
-            0,
-            self.data_range,
-        ).float()
+        
+        target_denorm = self.denormalize(
+            tir_100m
+        ).clamp(self.min_temperature, self.max_temperature).float()
 
         psnr = self.psnr(
-            pred_denorm,
-            hr_denorm,
+            prediction_denorm,
+            target_denorm,
         )
-        
-        pred_metric = pred_denorm / self.data_range
-        hr_metric = hr_denorm / self.data_range
+
+        #Min-Max normalization so [Min, Max] -> [0,1] since SSIM is configured with data_range=1.0.
+        prediction_metric = (
+            prediction_denorm - self.min_temperature
+        ) / self.data_range
+
+        target_metric = (
+            target_denorm - self.min_temperature
+        ) / self.data_range
 
         ssim = self.ssim(
-            pred_metric,
-            hr_metric,
+            prediction_metric,
+            target_metric,
         )
 
         self.log_dict(
@@ -243,11 +263,11 @@ class SRLightningModule(L.LightningModule):
             prog_bar=True,
             on_step=False,
             on_epoch=True,
-            batch_size=lr.size(0),
+            batch_size=tir_200m.size(0),
         )
 
         return loss
-    
+   
     # ---------------------------------------------------------
     # Optimizer & Scheduler
     # ---------------------------------------------------------
