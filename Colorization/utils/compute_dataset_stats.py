@@ -18,9 +18,10 @@ PATCHES_DIR = DATASET_ROOT / "output" / "patches"
 
 TRAIN_SPLIT = DATASET_ROOT / "splits" / "train.txt"
 
-OUTPUT_FILE = (
+OUTPUT_FILE= (
     WORKSPACE
     / "IR-enhancement-colorization"
+    / "Colorization"
     / "configs"
     / "dataset_stats.yaml"
 )
