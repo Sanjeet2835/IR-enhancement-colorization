@@ -1,13 +1,13 @@
 from pathlib import Path
-
+import torch
 import lightning as L
 import yaml
 from lightning.pytorch.loggers import MLFlowLogger
 
-from data.datamodule import ColorizationDataModule
-from training_system.colorization_module import ColorizationLightningModule
-from utils.callbacks import get_callbacks
-from utils.seed import seed_everything
+from Colorization.data.datamodule import ColorizationDataModule
+from Colorization.training_system.colorization_module import ColorizationLightningModule
+from Colorization.utils.callbacks import get_callbacks
+from Colorization.utils.seed import seed_everything
 
 
 def load_config(config_path: str | Path) -> dict:
@@ -109,6 +109,34 @@ def main():
         model=model,
         datamodule=datamodule,
         ckpt_path="best",
+    )
+
+    # ---------------------------------------------------------
+    # Export Best Model as .pth
+    # ---------------------------------------------------------
+
+    best_model = ColorizationLightningModule.load_from_checkpoint(
+        trainer.checkpoint_callback.best_model_path,
+    )
+
+    output_path = (
+        project_root
+        / "weights"
+        / "colorization.pth"
+    )
+
+    output_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    torch.save(
+        best_model.model.state_dict(),
+        output_path,
+    )
+
+    print(
+        f"Saved model weights to:\n{output_path}"
     )
 
 
