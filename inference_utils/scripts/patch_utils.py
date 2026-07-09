@@ -6,9 +6,10 @@ import numpy as np
 def extract_patches(
     image: np.ndarray,
     patch_size: int,
+    stride: int | None = None,
 ) -> tuple[List[np.ndarray], List[Tuple[int, int]]]:
     """
-    Extract non-overlapping patches from an image.
+    Extract overlapping patches from an image.
 
     Parameters
     ----------
@@ -17,6 +18,10 @@ def extract_patches(
 
     patch_size : int
         Square patch size.
+
+    stride : int, optional
+        Distance between consecutive patches.
+        Defaults to patch_size (non-overlapping).
 
     Returns
     -------
@@ -32,22 +37,46 @@ def extract_patches(
             f"Expected image shape (C, H, W), got {image.shape}"
         )
 
+    if stride is None:
+        stride = patch_size
+
     _, height, width = image.shape
 
     patches = []
     locations = []
 
-    for y in range(
-        0,
-        height - patch_size + 1,
-        patch_size,
-    ):
+    # ---------------------------------------------------------
+    # Compute start coordinates so the last patch always reaches
+    # the image boundary.
+    # ---------------------------------------------------------
 
-        for x in range(
+    y_positions = list(
+        range(
             0,
-            width - patch_size + 1,
-            patch_size,
-        ):
+            max(height - patch_size + 1, 1),
+            stride,
+        )
+    )
+
+    if y_positions[-1] != height - patch_size:
+        y_positions.append(height - patch_size)
+
+    x_positions = list(
+        range(
+            0,
+            max(width - patch_size + 1, 1),
+            stride,
+        )
+    )
+
+    if x_positions[-1] != width - patch_size:
+        x_positions.append(width - patch_size)
+
+    # ---------------------------------------------------------
+
+    for y in y_positions:
+
+        for x in x_positions:
 
             patch = image[
                 :,
@@ -68,7 +97,8 @@ def stitch_patches(
     scale_factor: int = 1,
 ) -> np.ndarray:
     """
-    Reconstruct an image from non-overlapping patches.
+    Reconstruct an image from overlapping patches using
+    Hann-window weighted blending.
 
     Parameters
     ----------
@@ -88,12 +118,50 @@ def stitch_patches(
             Colorization -> 1
     """
 
+    channels = output_shape[0]
+    patch_size = patches[0].shape[-1]
+
+    # ---------------------------------------------------------
+    # Accumulators
+    # ---------------------------------------------------------
+
     reconstructed = np.zeros(
         output_shape,
-        dtype=patches[0].dtype,
+        dtype=np.float32,
     )
 
-    patch_size = patches[0].shape[-1]
+    weights = np.zeros(
+        output_shape,
+        dtype=np.float32,
+    )
+
+    # ---------------------------------------------------------
+    # 2D Hann Window
+    # ---------------------------------------------------------
+
+    hann_y = np.hanning(patch_size)
+    hann_x = np.hanning(patch_size)
+
+    window = np.outer(
+        hann_y,
+        hann_x,
+    ).astype(np.float32)
+
+    # Prevent exact zeros at the borders
+    window = np.maximum(
+        window,
+        1e-6,
+    )
+
+    # Expand to (C, H, W)
+    window = np.broadcast_to(
+        window,
+        (channels, patch_size, patch_size),
+    )
+
+    # ---------------------------------------------------------
+    # Blend patches
+    # ---------------------------------------------------------
 
     for patch, (y, x) in zip(
         patches,
@@ -107,6 +175,23 @@ def stitch_patches(
             :,
             y:y + patch_size,
             x:x + patch_size,
-        ] = patch
+        ] += patch * window
 
-    return reconstructed
+        weights[
+            :,
+            y:y + patch_size,
+            x:x + patch_size,
+        ] += window
+
+    # ---------------------------------------------------------
+    # Normalize weighted sum
+    # ---------------------------------------------------------
+
+    reconstructed /= np.maximum(
+        weights,
+        1e-6,
+    )
+
+    return reconstructed.astype(
+        patches[0].dtype,
+    )
