@@ -1,13 +1,13 @@
 from pathlib import Path
-
+import torch
 import lightning as L
 import yaml
 from lightning.pytorch.loggers import MLFlowLogger
 
-from data.datamodule import SRDataModule
-from training_system.sr_module import SRLightningModule
-from utils.callbacks import get_callbacks
-from utils.seed import seed_everything
+from Enhancement.data.datamodule import SRDataModule
+from Enhancement.training_system.sr_module import SRLightningModule
+from Enhancement.utils.callbacks import get_callbacks
+from Enhancement.utils.seed import seed_everything
 
 
 def load_config(config_path: str | Path) -> dict:
@@ -64,7 +64,7 @@ def main():
         num_blocks=int(config["num_blocks"]),
         scale_factor=int(config["scale_factor"]),
 
-        lambda_physics=float(config["lambda_physics"]),
+        lambda_physics=0.1,
 
         eta_min=float(config["eta_min"]),
     )
@@ -119,6 +119,34 @@ def main():
         ckpt_path="best",
     )
 
+    
+    # ---------------------------------------------------------
+    # Export Best Model as .pth
+    # ---------------------------------------------------------
+
+    best_model = SRLightningModule.load_from_checkpoint(
+        trainer.checkpoint_callback.best_model_path,
+    )
+
+    output_path = (
+        project_root
+        / "weights"
+        / "edsr.pth"
+    )
+
+    output_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    torch.save(
+        best_model.model.state_dict(),
+        output_path,
+    )
+
+    print(
+        f"Saved model weights to:\n{output_path}"
+    )
 
 if __name__ == "__main__":
     main()
