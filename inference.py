@@ -89,6 +89,7 @@ def main():
     sr_patches, sr_locations = extract_patches(
         image=tir_image,
         patch_size=256,
+        stride=128,
     )
     
     sr_predictions = []
