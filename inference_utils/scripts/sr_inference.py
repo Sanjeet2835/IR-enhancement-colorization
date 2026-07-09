@@ -14,7 +14,6 @@ class SRInference:
 
     def __init__(
         self,
-        weights_dir: str | Path = "weights",
         device: str = "cuda",
     ) -> None:
 
