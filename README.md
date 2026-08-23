@@ -1,7 +1,7 @@
 # Thermal Image Enhancement & Colorization for Satellite Imagery
 
 > 🚧 **Work in Progress**  
-> This repository is currently under active development. Features, models, and documentation are continuously being improved.
+> This repository is currently under active development.
 
 ## Overview
 
